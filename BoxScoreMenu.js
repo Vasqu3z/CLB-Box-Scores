@@ -44,8 +44,9 @@ function showPitcherStats() {
   var homeRoster = sheet.getRange(homeRange.startRow, homeRange.nameCol, homeRange.numPlayers, 1).getValues();
 
   // Read pitcher stats from sheet
-  var awayStats = sheet.getRange(awayRange.startRow, pitcherCols.IP, awayRange.numPlayers, 7).getValues();
-  var homeStats = sheet.getRange(homeRange.startRow, pitcherCols.IP, homeRange.numPlayers, 7).getValues();
+  var numPitcherCols = Object.keys(pitcherCols).length;
+  var awayStats = sheet.getRange(awayRange.startRow, pitcherCols.IP, awayRange.numPlayers, numPitcherCols).getValues();
+  var homeStats = sheet.getRange(homeRange.startRow, pitcherCols.IP, homeRange.numPlayers, numPitcherCols).getValues();
   
   var message = "╔═══════════════════════════════════╗\n";
   message += "║       PITCHING STATS SUMMARY         ║\n";

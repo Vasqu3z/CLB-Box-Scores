@@ -725,7 +725,7 @@ function writeStatsToSheet(sheet, playerStats, rosterMap) {
       var ip = calculateIP(p.outs);
 
       var pitchingArray = [[ip, p.BF, p.H, p.HR, p.R, p.BB, p.K]];
-      sheet.getRange(row, pitcherCols.IP, 1, 7).setValues(pitchingArray);
+      sheet.getRange(row, pitcherCols.IP, 1, pitchingArray[0].length).setValues(pitchingArray);
     }
 
     // Write fielding stats if player has them
@@ -745,7 +745,7 @@ function writeStatsToSheet(sheet, playerStats, rosterMap) {
         hittingRange.homeStartRow + batterIndex;
 
       var hittingArray = [[h.AB, h.H, h.HR, h.RBI, h.BB, h.K, h.ROB, h.DP, h.TB]];
-      sheet.getRange(hittingRow, hittingCols.AB, 1, 9).setValues(hittingArray);
+      sheet.getRange(hittingRow, hittingCols.AB, 1, hittingArray[0].length).setValues(hittingArray);
     }
   }
 }
