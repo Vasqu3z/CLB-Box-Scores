@@ -14,6 +14,10 @@ var BOX_SCORE_CONFIG = {
   // Prefix for game sheets (replaces hardcoded "#")
   GAME_SHEET_PREFIX: "#",
 
+  // ===== v3 EXPERIMENTAL FEATURES =====
+  // Auto-insert PC[X] notation when pitcher changes (disable if causing issues)
+  AUTO_INSERT_PITCHER_CHANGE: true,
+
   // ===== PITCHER TRACKING =====
   // Dropdown cells for active pitchers
   AWAY_PITCHER_CELL: "D3",

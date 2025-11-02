@@ -89,6 +89,11 @@ function processEdit(sheet, cell, row, col, newValue, oldValue, range) {
     // Handle position swap when pitcher changes
     if (oldValue && newValue && oldValue !== newValue) {
       handlePositionSwap(sheet, oldValue, newValue);
+
+      // v3 EXPERIMENTAL: Auto-insert PC[X] notation
+      if (BOX_SCORE_CONFIG.AUTO_INSERT_PITCHER_CHANGE) {
+        autoInsertPitcherChange(sheet, cell, oldValue, newValue);
+      }
     }
     return;
   }
@@ -196,6 +201,156 @@ function installTriggers() {
   // Simple triggers (like onEdit) don't need manual installation
   // They work automatically when the function is named "onEdit"
   logInfo("Triggers", "onEdit trigger uses simple trigger (automatic)");
+}
+
+// ============================================
+// v3 EXPERIMENTAL: AUTO PITCHER CHANGE
+// ============================================
+
+/**
+ * Auto-insert PC[X] notation when pitcher changes
+ * @param {Sheet} sheet - The game sheet
+ * @param {string} pitcherCell - Pitcher dropdown cell (D3 or D4)
+ * @param {string} oldPitcher - Previous pitcher name
+ * @param {string} newPitcher - New pitcher name
+ */
+function autoInsertPitcherChange(sheet, pitcherCell, oldPitcher, newPitcher) {
+  try {
+    // Determine which team is batting (opposite of pitching team)
+    var battingTeam = (pitcherCell === BOX_SCORE_CONFIG.AWAY_PITCHER_CELL) ? 'home' : 'away';
+
+    // Find current inning column and next available cell
+    var result = findNextAtBatCell(sheet, battingTeam);
+    if (!result) {
+      logInfo("AutoPC", "No available at-bat cell found for pitcher change");
+      return;
+    }
+
+    // Calculate inherited runners from current inning state
+    var inheritedRunners = calculateInheritedRunners(sheet, battingTeam, result.col);
+
+    // Insert PC[X] notation
+    var pcNotation = "PC" + inheritedRunners;
+    sheet.getRange(result.row, result.col).setValue(pcNotation);
+
+    // Show toast notification
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      'Inserted ' + pcNotation + ' for ' + newPitcher + ' (' + inheritedRunners + ' inherited runners)',
+      'Pitcher Change',
+      5
+    );
+
+    logInfo("AutoPC", "Inserted " + pcNotation + " at " + result.row + "," + result.col + " for " + newPitcher);
+
+  } catch (error) {
+    logError("AutoPC", "Failed to auto-insert PC notation: " + error.toString(), sheet.getName());
+  }
+}
+
+/**
+ * Find the next available at-bat cell for a team
+ * @param {Sheet} sheet - The game sheet
+ * @param {string} team - "away" or "home"
+ * @return {Object} {row, col} or null if no cell found
+ */
+function findNextAtBatCell(sheet, team) {
+  var range = (team === 'away') ?
+    BOX_SCORE_CONFIG.AWAY_ATBAT_RANGE :
+    BOX_SCORE_CONFIG.HOME_ATBAT_RANGE;
+
+  // Read all at-bat cells
+  var numRows = range.endRow - range.startRow + 1;
+  var numCols = range.endCol - range.startCol + 1;
+  var values = sheet.getRange(range.startRow, range.startCol, numRows, numCols).getValues();
+
+  // Scan column by column (inning by inning), then row by row (batter by batter)
+  // Find the first empty cell in the rightmost active column
+  var lastActiveCol = -1;
+  var firstEmptyInLastCol = null;
+
+  for (var c = 0; c < numCols; c++) {
+    var hasData = false;
+    for (var r = 0; r < numRows; r++) {
+      if (values[r][c] && values[r][c] !== "") {
+        hasData = true;
+        lastActiveCol = c;
+      }
+    }
+  }
+
+  // If no active column found, use first column
+  if (lastActiveCol === -1) {
+    return {row: range.startRow, col: range.startCol};
+  }
+
+  // Find first empty cell in the active column
+  for (var r = 0; r < numRows; r++) {
+    if (!values[r][lastActiveCol] || values[r][lastActiveCol] === "") {
+      return {row: range.startRow + r, col: range.startCol + lastActiveCol};
+    }
+  }
+
+  // Active column is full, move to next column if available
+  if (lastActiveCol + 1 < numCols) {
+    return {row: range.startRow, col: range.startCol + lastActiveCol + 1};
+  }
+
+  // No available cells
+  return null;
+}
+
+/**
+ * Calculate inherited runners from current inning state
+ * Logic: Track runners who reached base but haven't scored or made outs
+ * @param {Sheet} sheet - The game sheet
+ * @param {string} battingTeam - "away" or "home"
+ * @param {number} currentCol - Current inning column (absolute column number)
+ * @return {number} Number of inherited runners (0-3)
+ */
+function calculateInheritedRunners(sheet, battingTeam, currentCol) {
+  var range = (battingTeam === 'away') ?
+    BOX_SCORE_CONFIG.AWAY_ATBAT_RANGE :
+    BOX_SCORE_CONFIG.HOME_ATBAT_RANGE;
+
+  var inningCol = currentCol - range.startCol; // Convert to 0-based inning index
+
+  // Read all at-bats in this inning (up to current position)
+  var numRows = range.endRow - range.startRow + 1;
+  var values = sheet.getRange(range.startRow, currentCol, numRows, 1).getValues();
+
+  var runnersOnBase = 0;
+  var outsRecorded = 0;
+
+  for (var r = 0; r < values.length; r++) {
+    var value = values[r][0];
+    if (!value || value === "") continue;
+
+    // Skip PC[X] notations (they're pitcher changes, not at-bats)
+    if (String(value).toUpperCase().indexOf("PC") === 0) continue;
+
+    var stats = parseNotation(value);
+
+    // Track runners reaching base (hits, walks, errors)
+    if (stats.H > 0 || stats.BB > 0 || stats.E) {
+      runnersOnBase++;
+    }
+
+    // Track runners scoring (subtract RBIs from runners on base)
+    if (stats.R > 0) {
+      runnersOnBase = Math.max(0, runnersOnBase - stats.R);
+    }
+
+    // Track outs
+    outsRecorded += stats.outs;
+  }
+
+  // If 3 outs recorded, no inherited runners (inning over)
+  if (outsRecorded >= 3) {
+    return 0;
+  }
+
+  // Cap at 3 runners (bases loaded)
+  return Math.min(3, runnersOnBase);
 }
 
 // ============================================
