@@ -381,16 +381,22 @@ function processTeamAtBats(sheet, atBatGrid, battingTeam, rosterMap, playerStats
 
       // Initialize player stats if needed
       if (!playerStats[batterName]) {
-        playerStats[batterName] = {
-          hitting: {AB: 0, H: 0, HR: 0, RBI: 0, BB: 0, K: 0, ROB: 0, DP: 0, TB: 0},
-          fielding: {NP: 0, E: 0, SB: 0}
-        };
+        playerStats[batterName] = {};
+      }
+      if (!playerStats[batterName].hitting) {
+        playerStats[batterName].hitting = {AB: 0, H: 0, HR: 0, RBI: 0, BB: 0, K: 0, ROB: 0, DP: 0, TB: 0};
+      }
+      if (!playerStats[batterName].fielding) {
+        playerStats[batterName].fielding = {NP: 0, E: 0, SB: 0};
       }
 
-      if (activePitcher && !playerStats[activePitcher]) {
-        playerStats[activePitcher] = {
-          pitching: {BF: 0, outs: 0, H: 0, HR: 0, R: 0, BB: 0, K: 0}
-        };
+      if (activePitcher) {
+        if (!playerStats[activePitcher]) {
+          playerStats[activePitcher] = {};
+        }
+        if (!playerStats[activePitcher].pitching) {
+          playerStats[activePitcher].pitching = {BF: 0, outs: 0, H: 0, HR: 0, R: 0, BB: 0, K: 0};
+        }
       }
 
       // Apply hitting stats
@@ -431,7 +437,10 @@ function processTeamAtBats(sheet, atBatGrid, battingTeam, rosterMap, playerStats
       // Handle fielding stats (NP, E)
       if (stats.isNicePlay && stats.fielderPosition) {
         var fielder = findPlayerByPosition(rosterMap, fieldingTeam, stats.fielderPosition);
-        if (fielder && playerStats[fielder]) {
+        if (fielder) {
+          if (!playerStats[fielder]) {
+            playerStats[fielder] = {};
+          }
           if (!playerStats[fielder].fielding) {
             playerStats[fielder].fielding = {NP: 0, E: 0, SB: 0};
           }
@@ -443,7 +452,10 @@ function processTeamAtBats(sheet, atBatGrid, battingTeam, rosterMap, playerStats
 
       if (stats.isError && stats.fielderPosition) {
         var fielder = findPlayerByPosition(rosterMap, fieldingTeam, stats.fielderPosition);
-        if (fielder && playerStats[fielder]) {
+        if (fielder) {
+          if (!playerStats[fielder]) {
+            playerStats[fielder] = {};
+          }
           if (!playerStats[fielder].fielding) {
             playerStats[fielder].fielding = {NP: 0, E: 0, SB: 0};
           }
