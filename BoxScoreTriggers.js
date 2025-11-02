@@ -334,8 +334,9 @@ function calculateInheritedRunners(sheet, battingTeam, currentCol) {
 
     var stats = parseNotation(value);
 
-    // Track runners reaching base (hits, walks, errors)
-    if (stats.H > 0 || stats.BB > 0 || stats.E) {
+    // Track runners reaching base (hits, walks, errors, fielder's choice)
+    // Check all notations: H, BB, E (legacy), E[1-9] (new), FC (no out)
+    if (stats.H > 0 || stats.BB > 0 || stats.E || stats.isError || stats.FC) {
       runnersOnBase++;
     }
 

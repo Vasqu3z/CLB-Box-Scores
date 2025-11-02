@@ -29,6 +29,7 @@ function parseNotation(value) {
     SB: false,  // Stolen base
     CS: false,  // Caught stealing
     DP: false,  // Double play
+    FC: false,  // Fielder's choice (batter reaches, no out)
 
     // v3: New fields for bulk processor
     isPitcherChange: false,   // Is this a pitcher change notation?
@@ -116,8 +117,10 @@ function parseNotation(value) {
     // Check if it's "FC OUT" (with out) or just "FC" (no out)
     if (value.indexOf("FC OUT") !== -1 || value.indexOf("FCOUT") !== -1) {
       stats.outs = 1;
+    } else {
+      // Plain FC has no out - batter reaches base
+      stats.FC = true;
     }
-    // Plain FC has no out
   }
 
   // ===== SACRIFICE FLY / SACRIFICE HIT =====
