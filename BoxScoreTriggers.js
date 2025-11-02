@@ -211,13 +211,13 @@ function autoInsertPitcherChange(sheet, pitcherCell, oldPitcher, newPitcher) {
     // Calculate inherited runners from current inning state
     var inheritedRunners = calculateInheritedRunners(sheet, battingTeam, result.col);
 
-    // Insert PC[X] notation
-    var pcNotation = "PC" + inheritedRunners;
+    // Insert PC[X] notation with pitcher name for bulk processor
+    var pcNotation = "PC" + inheritedRunners + " [" + newPitcher + "]";
     sheet.getRange(result.row, result.col).setValue(pcNotation);
 
     // Show toast notification
     SpreadsheetApp.getActiveSpreadsheet().toast(
-      'Inserted ' + pcNotation + ' for ' + newPitcher + ' (' + inheritedRunners + ' inherited runners)',
+      'Inserted PC' + inheritedRunners + ' [' + newPitcher + '] (' + inheritedRunners + ' inherited runners)',
       'Pitcher Change',
       5
     );
@@ -547,9 +547,11 @@ function processTeamAtBats(sheet, atBatGrid, battingTeam, rosterMap, playerStats
     BOX_SCORE_CONFIG.HOME_PITCHER_CELL :
     BOX_SCORE_CONFIG.AWAY_PITCHER_CELL;
 
-  var activePitcher = sheet.getRange(activePitcherCell).getValue();
+  // Start with no active pitcher - will be set by first PC notation or defaulted to dropdown value
+  var activePitcher = null;
   var previousPitcher = null;
   var inheritedRunners = 0;
+  var firstAtBatProcessed = false;
 
   // Process each batter (row) and inning (column)
   for (var col = 0; col < atBatGrid[0].length; col++) {
@@ -562,11 +564,23 @@ function processTeamAtBats(sheet, atBatGrid, battingTeam, rosterMap, playerStats
 
       // Handle pitcher change
       if (stats.isPitcherChange) {
+        // Store current pitcher as previous (for inherited runs)
         previousPitcher = activePitcher;
-        // Read new pitcher from dropdown (would need to be updated by user)
-        // For now, we just track that a change occurred
+
+        // Switch to new pitcher from PC notation
+        if (stats.newPitcherName) {
+          activePitcher = stats.newPitcherName;
+        }
+
         inheritedRunners = stats.inheritedRunners;
         continue;
+      }
+
+      // If we haven't set a pitcher yet and this is a real at-bat, use dropdown value
+      // (This handles games that start without a PC notation)
+      if (!activePitcher && !firstAtBatProcessed) {
+        activePitcher = sheet.getRange(activePitcherCell).getValue();
+        firstAtBatProcessed = true;
       }
 
       // Get batter name
