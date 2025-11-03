@@ -1,11 +1,11 @@
-// ===== BOX SCORE TRIGGERS MODULE =====
-// v3: Orchestrates automation via onEdit trigger and menu-driven bulk processor
+// ===== SCORE TRIGGERS MODULE =====
+// Orchestrates automation via onEdit trigger and menu-driven bulk processor
 // onEdit handles: pitcher dropdown changes (position swaps + auto PC[X] insertion)
 // Bulk processor handles: all stat calculations from at-bat grid
 
 /**
  * Main onEdit trigger - entry point for all automation
- * v3: Simplified - no LockService needed since we only handle position swaps
+ * Simplified design - no LockService needed since we only handle position swaps
  * @param {Event} e - Edit event object
  */
 function onEdit(e) {
@@ -66,7 +66,7 @@ function processEdit(sheet, cell, row, col, newValue, oldValue, range) {
     if (oldValue && newValue && oldValue !== newValue) {
       handlePositionSwap(sheet, oldValue, newValue);
 
-      // v3 EXPERIMENTAL: Auto-insert PC[X] notation
+      // Auto-insert PC[X] notation when pitcher changes
       if (BOX_SCORE_CONFIG.AUTO_INSERT_PITCHER_CHANGE) {
         autoInsertPitcherChange(sheet, cell, oldValue, newValue);
       }
@@ -75,7 +75,7 @@ function processEdit(sheet, cell, row, col, newValue, oldValue, range) {
   }
 
   // ============================================
-  // v3 HYBRID: Auto-process stats on at-bat entry
+  // Real-time scoring: Auto-process stats after each at-bat
   // ============================================
   if (isAtBatCell(row, col)) {
     // If auto-processing is enabled, trigger bulk processor for real-time scoring
@@ -171,10 +171,16 @@ function handlePositionSwap(sheet, oldPitcher, newPitcher) {
     return;
   }
 
-  // Get current positions
+  // Get current positions (batch read for performance)
+  // Read a range covering both players' rows, then index into the array
   var posCol = BOX_SCORE_CONFIG.AWAY_PITCHER_RANGE.positionCol;
-  var newPitcherPositionCell = sheet.getRange(newPitcherRow, posCol).getValue();
-  var oldPitcherPositionCell = sheet.getRange(oldPitcherRow, posCol).getValue();
+  var minRow = Math.min(newPitcherRow, oldPitcherRow);
+  var maxRow = Math.max(newPitcherRow, oldPitcherRow);
+  var rowCount = maxRow - minRow + 1;
+  var positions = sheet.getRange(minRow, posCol, rowCount, 1).getValues();
+
+  var newPitcherPositionCell = positions[newPitcherRow - minRow][0];
+  var oldPitcherPositionCell = positions[oldPitcherRow - minRow][0];
 
   var newPitcherCurrentPos = getCurrentPosition(newPitcherPositionCell);
   var oldPitcherCurrentPos = getCurrentPosition(oldPitcherPositionCell);
@@ -213,12 +219,13 @@ function handlePositionSwap(sheet, oldPitcher, newPitcher) {
     );
   }
 
-  // Perform position swap
+  // Perform position swap (batch write)
   var newPitcherUpdated = appendPosition(newPitcherPositionCell, newPitcherNotation);
   var oldPitcherUpdated = appendPosition(oldPitcherPositionCell, newPitcherCurrentPos);
 
-  sheet.getRange(newPitcherRow, posCol).setValue(newPitcherUpdated);
-  sheet.getRange(oldPitcherRow, posCol).setValue(oldPitcherUpdated);
+  positions[newPitcherRow - minRow][0] = newPitcherUpdated;
+  positions[oldPitcherRow - minRow][0] = oldPitcherUpdated;
+  sheet.getRange(minRow, posCol, rowCount, 1).setValues(positions);
 
   // Success toast
   SpreadsheetApp.getActiveSpreadsheet().toast(
@@ -249,7 +256,7 @@ function installTriggers() {
 }
 
 // ============================================
-// v3 EXPERIMENTAL: AUTO PITCHER CHANGE
+// AUTO PITCHER CHANGE TRACKING
 // ============================================
 
 /**
@@ -861,7 +868,8 @@ function processTeamAtBats(sheet, atBatGrid, battingTeam, rosterMap, playerStats
       }
 
       // Handle pitcher change AFTER processing at-bat stats
-      // (e.g., "K PC2" means pitcher gave up K, THEN was taken out)
+      // Order matters: "K PC2" means the DEPARTING pitcher gets credit for the strikeout,
+      // then we switch to the relief pitcher for subsequent at-bats
       if (stats.isPitcherChange) {
         // Store current pitcher as previous (for inherited runs)
         previousPitcher = activePitcher;
@@ -939,9 +947,8 @@ function writeStatsToSheet(sheet, playerStats, rosterMap) {
     // Write fielding stats if player has them
     if (playerStats[name].fielding) {
       var f = playerStats[name].fielding;
-      sheet.getRange(row, fieldingCols.NP).setValue(f.NP);
-      sheet.getRange(row, fieldingCols.E).setValue(f.E);
-      sheet.getRange(row, fieldingCols.SB).setValue(f.SB);
+      var fieldingArray = [[f.NP, f.E, f.SB]];
+      sheet.getRange(row, fieldingCols.NP, 1, 3).setValues(fieldingArray);
     }
 
     // Write hitting stats

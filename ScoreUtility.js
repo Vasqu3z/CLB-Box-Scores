@@ -1,5 +1,5 @@
-// ===== BOX SCORE UTILITY MODULE =====
-// Shared helper functions for Box Score automation
+// ===== SCORE UTILITY MODULE =====
+// Shared helper functions for score automation
 // Used by all other modules
 
 // ===== SHEET OPERATIONS =====

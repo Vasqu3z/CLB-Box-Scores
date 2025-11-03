@@ -1,5 +1,5 @@
-// ===== BOX SCORE MENU MODULE =====
-// User interface, menu system, and utility functions
+// ===== SCORE MENU MODULE =====
+// User interface, menu system, and stat viewers
 
 /**
  * Create custom menu when spreadsheet opens
@@ -19,8 +19,6 @@ function addBoxScoreMenu_v3() {
     .addSeparator()
     .addItem('⚾ View Pitcher Stats', 'showPitcherStats')
     .addItem('🏏 View Hitting Stats', 'showBatterStats')
-    .addSeparator()
-    .addItem('📜 View Position Changes', 'showPositionHistory')
     .addSeparator()
     .addItem('🗑️ Reset Game Stats', 'resetCurrentGame')
     .addToUi();
@@ -264,50 +262,3 @@ function resetCurrentGame() {
   }
 }
 
-// ===== POSITION HISTORY VIEWER =====
-
-/**
- * Show position change history for all players
- */
-function showPositionHistory() {
-  var sheet = SpreadsheetApp.getActiveSheet();
-  var posCol = BOX_SCORE_CONFIG.AWAY_PITCHER_RANGE.positionCol;
-  var nameCol = BOX_SCORE_CONFIG.AWAY_PITCHER_RANGE.nameCol;
-  
-  var history = 'POSITION CHANGE HISTORY:\n\n';
-  
-  // Away team
-  var awayStart = BOX_SCORE_CONFIG.AWAY_PITCHER_RANGE.startRow;
-  var awayEnd = BOX_SCORE_CONFIG.AWAY_PITCHER_RANGE.endRow;
-  var awayPositions = sheet.getRange(awayStart, posCol, awayEnd - awayStart + 1, 1).getValues();
-  var awayNames = sheet.getRange(awayStart, nameCol, awayEnd - awayStart + 1, 1).getValues();
-  
-  history += 'AWAY TEAM:\n';
-  for (var i = 0; i < awayPositions.length; i++) {
-    if (awayPositions[i][0] && awayNames[i][0]) {
-      var posHistory = getPositionHistory(awayPositions[i][0]);
-      if (posHistory.length > 1) {
-        history += awayNames[i][0] + ': ' + posHistory.join(' → ') + '\n';
-      }
-    }
-  }
-  
-  // Home team
-  var homeStart = BOX_SCORE_CONFIG.HOME_PITCHER_RANGE.startRow;
-  var homeEnd = BOX_SCORE_CONFIG.HOME_PITCHER_RANGE.endRow;
-  var homePositions = sheet.getRange(homeStart, posCol, homeEnd - homeStart + 1, 1).getValues();
-  var homeNames = sheet.getRange(homeStart, nameCol, homeEnd - homeStart + 1, 1).getValues();
-  
-  history += '\nHOME TEAM:\n';
-  for (var i = 0; i < homePositions.length; i++) {
-    if (homePositions[i][0] && homeNames[i][0]) {
-      var posHistory = getPositionHistory(homePositions[i][0]);
-      if (posHistory.length > 1) {
-        history += homeNames[i][0] + ': ' + posHistory.join(' → ') + '\n';
-      }
-    }
-  }
-  
-  var ui = SpreadsheetApp.getUi();
-  ui.alert('Position History', history, ui.ButtonSet.OK);
-}

@@ -1,4 +1,4 @@
-// ===== BOX SCORE CONFIGURATION =====
+// ===== SCORE CONFIGURATION =====
 // Configuration for CLB Box Score Automation
 // 
 // This configuration defines the exact layout of CLB box score sheets.

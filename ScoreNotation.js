@@ -1,10 +1,10 @@
-// ===== BOX SCORE NOTATION PARSER MODULE =====
-// v3: Enhanced parser with PC[X], E[1-9], NP[1-9] support
+// ===== SCORE NOTATION PARSER MODULE =====
+// Enhanced parser with PC[X], E[1-9], NP[1-9] support
 // Used by the bulk processor
 
 /**
  * Parse at-bat notation into stats
- * v3: Returns rich object with pitcher change, fielder position, etc.
+ * Returns rich object with pitcher change, fielder position, and all stat components
  * @param {string} value - At-bat notation (e.g., "2RBI HR", "K", "OUT NP5", "PC2", "1B E6")
  * @return {Object} Stats object with all parsed components
  */
@@ -31,7 +31,7 @@ function parseNotation(value) {
     DP: false,  // Double play
     FC: false,  // Fielder's choice (batter reaches, no out)
 
-    // v3: New fields for bulk processor
+    // Fields for bulk processor
     isPitcherChange: false,   // Is this a pitcher change notation?
     inheritedRunners: 0,      // Number of inherited runners (from PC[X])
     isError: false,           // Is there an error with fielder position?
