@@ -94,33 +94,23 @@ function processEdit(sheet, cell, row, col, newValue, oldValue, range) {
 // ============================================
 
 /**
- * Count how many relief pitchers have been used (RP1, RP2, etc.)
+ * Count how many relief pitchers have been used for a specific team (RP1, RP2, etc.)
  * @param {Sheet} sheet - The game sheet
- * @return {number} Highest RP number found (0 if none)
+ * @param {string} team - "away" or "home"
+ * @return {number} Highest RP number found for that team (0 if none)
  */
-function countReliefPitchers(sheet) {
+function countReliefPitchers(sheet, team) {
   var posCol = BOX_SCORE_CONFIG.AWAY_PITCHER_RANGE.positionCol;
-  var awayRange = BOX_SCORE_CONFIG.AWAY_PITCHER_RANGE;
-  var homeRange = BOX_SCORE_CONFIG.HOME_PITCHER_RANGE;
+  var range = (team === 'away') ?
+    BOX_SCORE_CONFIG.AWAY_PITCHER_RANGE :
+    BOX_SCORE_CONFIG.HOME_PITCHER_RANGE;
 
   var maxRP = 0;
 
-  // Check away team
-  var awayPositions = sheet.getRange(awayRange.startRow, posCol, awayRange.numPlayers, 1).getValues();
-  for (var i = 0; i < awayPositions.length; i++) {
-    var history = getPositionHistory(awayPositions[i][0]);
-    for (var j = 0; j < history.length; j++) {
-      var match = history[j].match(/^RP(\d+)$/);
-      if (match) {
-        maxRP = Math.max(maxRP, parseInt(match[1]));
-      }
-    }
-  }
-
-  // Check home team
-  var homePositions = sheet.getRange(homeRange.startRow, posCol, homeRange.numPlayers, 1).getValues();
-  for (var i = 0; i < homePositions.length; i++) {
-    var history = getPositionHistory(homePositions[i][0]);
+  // Check only the specified team
+  var positions = sheet.getRange(range.startRow, posCol, range.numPlayers, 1).getValues();
+  for (var i = 0; i < positions.length; i++) {
+    var history = getPositionHistory(positions[i][0]);
     for (var j = 0; j < history.length; j++) {
       var match = history[j].match(/^RP(\d+)$/);
       if (match) {
@@ -187,6 +177,16 @@ function handlePositionSwap(sheet, oldPitcher, newPitcher) {
   var newPitcherCurrentPos = getCurrentPosition(newPitcherPositionCell);
   var oldPitcherCurrentPos = getCurrentPosition(oldPitcherPositionCell);
 
+  // Determine which team the new pitcher is on
+  var awayRange = BOX_SCORE_CONFIG.AWAY_PITCHER_RANGE;
+  var homeRange = BOX_SCORE_CONFIG.HOME_PITCHER_RANGE;
+  var newPitcherTeam;
+  if (newPitcherRow >= awayRange.startRow && newPitcherRow <= awayRange.endRow) {
+    newPitcherTeam = 'away';
+  } else if (newPitcherRow >= homeRange.startRow && newPitcherRow <= homeRange.endRow) {
+    newPitcherTeam = 'home';
+  }
+
   // Determine pitcher notation for old and new pitchers
   var oldPitcherHistory = getPositionHistory(oldPitcherPositionCell);
   var oldPitcherNotation;
@@ -199,8 +199,8 @@ function handlePositionSwap(sheet, oldPitcher, newPitcher) {
     oldPitcherNotation = oldPitcherCurrentPos;
   }
 
-  // Count existing relief pitchers to assign next RP number
-  var reliefCount = countReliefPitchers(sheet);
+  // Count existing relief pitchers for this team to assign next RP number
+  var reliefCount = countReliefPitchers(sheet, newPitcherTeam);
   var newPitcherNotation = 'RP' + (reliefCount + 1);
 
   // Check if new pitcher already pitched (re-entry warning)
